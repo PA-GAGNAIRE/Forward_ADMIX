@@ -7,6 +7,8 @@ import numpy as np
 
 ts =  pyslim.load("your_file.trees").simplify()
 
+## PAG: So here if I got it well it means that the problem mostly came from the way you were using random sampling before? ##
+## Was it because samples are almost never sorted by chance from 0 to n-1 in a given tree, especially when the pop is large? ##
 subsample = np.random.choice(ts.samples(), size=10, replace=False)
 print("Subsample =   ", subsample)
 
