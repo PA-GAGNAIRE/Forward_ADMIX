@@ -1,6 +1,7 @@
 #out of the oven from Jerome in the google group
 #I have no idea why this works, and the other one does not.
 #oh well, at least it seems to work now!
+## PAG: Excellent news! ##
 
 import msprime, pyslim
 import numpy as np
