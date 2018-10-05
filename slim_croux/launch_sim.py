@@ -25,8 +25,8 @@ cmd = 'slim -d nPop1={0} -d nPop2={1} -d nPop3={2} -d Lchro={3} -d "outputFile={
 os.system(cmd)
 
 # Run "ancestry_proportions.py"
-print('\nRun ancestry_proportions_v3.py')
-cmd = './ancestry_proportions_v3.py {0} {1}'.format(outputFile, nSampleAncestry)
+print('\nRun ancestry_proportions_v2.py')
+cmd = './ancestry_proportions_v2.py {0} {1}'.format(outputFile, nSampleAncestry)
 os.system(cmd)
 
 # Plot statistics
