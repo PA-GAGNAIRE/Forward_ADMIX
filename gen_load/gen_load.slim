@@ -1,14 +1,12 @@
-//this script is still a work in progress...
-
 initialize() {
 	defineConstant("start", clock());
 	defineConstant("L", Lchro);
     defineConstant("run", outputFile);
 	defineConstant("path", asString("/home/pagagnaire/Documents/Flavia/gen_load/" + run + "/"));
 	//defineConstant("alfa", Alfa);
-    defineConstant("t", 1000);
-    defineConstant("final", 2000);
-    defineConstant("step", 10);
+    // defineConstant("t", 1000);
+    // defineConstant("final", 2100);
+    defineConstant("step", _step_);
 	initializeTreeSeq();
 	initializeMutationRate(1e-6);
 	//neutral mutation at first
@@ -34,7 +32,7 @@ initialize() {
 }
 
 //2000
-1000 late() {
+_time_ late() {
     x = sim.mutationFrequencies(p1);
 	y = sim.mutationFrequencies(p2);
     z = sim.mutations.position;
@@ -62,15 +60,17 @@ initialize() {
     sim.addSubpop("p3", nPop3);
 	p3.setMigrationRates(c(p1, p2), c(0.5, 0.5));
 }
-//2001
-1001 late() {
+
+//time +1
+_time1_ late() {
 	p3.setMigrationRates(c(p1, p2), c(0.0, 0.0));
 	p1.setSubpopulationSize(0);
 	p2.setSubpopulationSize(0);
 }
 
-1001: late() {
-    if (sim.generation % 10 == 0){ 
+//time+1
+_time1_: late() {
+    if (sim.generation % step == 0){ 
         //getting mutation frequencies
         v = sim.mutationFrequencies(p3);
         v1 = matrix(asFloat(v), nrow = length(sim.mutationCounts(NULL)));
@@ -95,7 +95,7 @@ initialize() {
 
 }
 
-2001 late() {
+_finish_ late() {
 	v = sim.mutationFrequencies(p3);
     v1 = matrix(asFloat(v), nrow = length(sim.mutationCounts(NULL)));
     u = sim.mutations.position;
