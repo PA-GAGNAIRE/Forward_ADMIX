@@ -15,7 +15,7 @@ for i in sys.argv:
     if i[0] == 'Lchro':
         Lchro = int(i[1])
     if i[0] == 'outputFile':
-        outputFile = "'" + i[1] + "'"
+        outputFile = "'" + i[1] + "'"    
     if i[0] == 'slimScript':
         slimScript = i[1]
 
@@ -23,13 +23,3 @@ for i in sys.argv:
 print('Run slim')
 cmd ='slim -d nPop1={0} -d nPop2={1} -d nPop3={2} -d Lchro={3} -d "outputFile={4}" {5}'.format(nPop1, nPop2, nPop3, Lchro, outputFile, slimScript)
 os.system(cmd)
-
-# Run "ancestry_proportions.py"
-# print('\nRun ancest_auto_2.py')
-# cmd = 'ancest_auto_2.py {0}'.format(outputFile)
-# os.system(cmd)
-
-# # # Plot statistics
-# print('\nplot_ancestry.R')
-# cmd = './plot_ancestry.R file={0}'.format(outputFile.split('.')[0].replace("'",""))
-# os.system(cmd)
