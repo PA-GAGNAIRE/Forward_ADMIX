@@ -1,7 +1,9 @@
 initialize() {
+	// starting the clock
 	defineConstant("start", clock());
 	defineConstant("L", Lchro);
 	initializeMutationRate(mu);
+	// neutral mutations
 	initializeMutationType("m1", 0.0, "f", 0);
 	m1.convertToSubstitution = F;
 	m1.mutationStackPolicy = "l";
@@ -18,6 +20,7 @@ initialize() {
 	
 	defineConstant("ev", even);
 	defineConstant("od", odd);
+	// here we sample 2000 sites to be potentially mutated into BDMIs
 	defineConstant("dmi", sort(sample(ev, incomp)));
 	defineConstant("func", sort(sample(od, func_el)));
 	initializeGenomicElementType("g1", c(m1), c(1.0));
