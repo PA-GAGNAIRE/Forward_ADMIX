@@ -35,10 +35,28 @@ initialize() {
 }
 
 1 late() {
-    sim.readFromPopulationFile("../b4_adm_" + 19999 + "_dmi_.arvores");
-    setSeed(getSeed() + asInteger(sample(0:1000, 1)));
+    //this makes the ancestry script run much faster later on
+	sim.addSubpop("p1", 1);
+	sim.addSubpop("p2", 1);
 	sim.treeSeqRememberIndividuals(sim.subpopulations.individuals);
 }
+
+2 early(){
+	p1.setSubpopulationSize(nPop1);
+	p2.setSubpopulationSize(nPop2);
+}
+
+_b4admx_ late(){
+	sim.treeSeqOutput(asString("./b4_adm_" + sim.generation + "_dmi_.trees"));
+}
+
+// conversely, you can run from other tree seq files (changing the seed, of course).
+// 1 late() {
+//    sim.readFromPopulationFile("../b4_adm_" + 19999 + "_dmi_.arvores");
+//    setSeed(getSeed() + asInteger(sample(0:1000, 1)));
+//	sim.treeSeqRememberIndividuals(sim.subpopulations.individuals);
+//}
+
 
 //this is the time of admixture
 _admx_: late(){
