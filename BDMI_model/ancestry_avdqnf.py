@@ -30,8 +30,8 @@ for i in sys.argv:
 gen_1 = np.arange(tadmix+Step1, fim1, Step1)
 gen_2 = np.arange(timestep, fim2, Step2)
 gen = np.append(gen_1, gen_2)
-#gen = np.arange(tadmix+10, fim2, Step2)
 
+#run for every tree file saved during simulations
 for i in gen:
     filename = run + "_" + str(i) + "_dmi.trees"
     ts = pyslim.load(str(filename)).simplify()
