@@ -2,7 +2,7 @@
 import os
 import sys
 
-#this script will run SLiM, according to the parameters run in the bash script "run_slim_7.sh"
+#this script will run SLiM, according to the parameters run in the bash script "roda_dmi_new.sh"
 
 for i in sys.argv:
 	i = i.strip().split('=')
