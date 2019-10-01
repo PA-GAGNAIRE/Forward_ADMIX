@@ -1,0 +1,315 @@
+initialize() {
+	// starting the clock
+	defineConstant("start", clock());
+	defineConstant("L", Lchro);
+	initializeMutationRate(mu);
+	// neutral mutations
+	initializeMutationType("m1", 0.0, "f", 0);
+	m1.convertToSubstitution = F;
+	m1.mutationStackPolicy = "l";
+	m1.color = "red";
+	initializeTreeSeq();
+	even = NULL;
+	odd = NULL;
+	
+	for (i in 0:(L-1)){
+		if(i % 2 == 0){
+			even = c(even, i);
+		} else {odd = c(odd, i);}
+	}
+	
+	defineConstant("ev", even);
+	defineConstant("od", odd);
+	// here we sample 2000 sites to be potentially mutated into BDMIs
+	defineConstant("dmi", sort(sample(ev, incomp)));
+	defineConstant("func", sort(sample(od, func_el)));
+	initializeGenomicElementType("g1", c(m1), c(1.0));
+	
+	for (i in 0:(length(dmi)-1)){
+		//                      type inicio, fim
+		initializeGenomicElement(g1, dmi[i], dmi[i]);
+	}
+	
+	//1st half has high recombination, second half has low recomb
+	initializeRecombinationRate(c(1e-3, 1e-4), c(asInteger(L/2), asInteger(L-1)));
+}
+
+1 late() {
+    //this makes the ancestry script run much faster later on
+	sim.addSubpop("p1", 1);
+	sim.addSubpop("p2", 1);
+	sim.treeSeqRememberIndividuals(sim.subpopulations.individuals);
+}
+
+2 early(){
+	p1.setSubpopulationSize(nPop1);
+	p2.setSubpopulationSize(nPop2);
+}
+
+_b4admx_ late(){
+	sim.treeSeqOutput(asString("./b4_adm_" + sim.generation + "_dmi_.trees"));
+}
+
+// conversely, you can run from other tree seq files (changing the seed, of course).
+// 1 late() {
+//    sim.readFromPopulationFile("../b4_adm_" + 19999 + "_dmi_.arvores");
+//    setSeed(getSeed() + asInteger(sample(0:1000, 1)));
+//	sim.treeSeqRememberIndividuals(sim.subpopulations.individuals);
+//}
+
+
+//this is the time of admixture
+_admx_: late(){
+	// I am marking every individual with 4 tags, of value 0 at every generation after admixture
+	// These tags will be use to increment count the incompatibility loci and their state
+	//(hetero or homozygous)
+	sim.subpopulations.individuals.setValue("HEA", 0);
+	sim.subpopulations.individuals.setValue("HOA", 0);
+	sim.subpopulations.individuals.setValue("HEB", 0);
+	sim.subpopulations.individuals.setValue("HOB", 0);
+}
+
+
+_admx_ late (){
+	tabi = c();
+	mutss = sim.mutationsOfType(m1);
+	mutss = sortBy(mutss, "position");
+	defineConstant("muts", sim.mutationsOfType(m1).position);
+	m1_in_p2 = (sim.mutationCounts(p2, mutss) > 0);
+	m1_in_p1 = (sim.mutationCounts(p1, mutss) > 0);
+	m1_in_p1 = asInteger(m1_in_p1);
+	m1_in_p2 = asInteger(m1_in_p2);
+	print(m1_in_p1);
+	print(m1_in_p2);
+	
+	//tagging mutations according to their pop of origin
+	for (m in 0:(size(mutss)-1)){
+		if((m1_in_p1[m] == T) & (m1_in_p2[m] == F)){
+			mutss[m].setValue("G", "A");} else if ((m1_in_p1[m] == F) & (m1_in_p2[m] == T)){mutss[m].setValue("G", "B");} else if ((m1_in_p1[m] == T) & (m1_in_p2[m] == T)){mutss[m].setValue("G", "N");}
+	}
+	
+	//making a table with all DMIs before admixture 
+	temp = c();
+	tab = c();
+	for (i in 0:(length(mutss)-1)){
+		temp = c(mutss[i].position, mutss[i].id, mutss[i].subpopID, mutss[i].getValue("G"), mutss[i].originGeneration, sim.mutationFrequencies(p1, mutss[i]), sim.mutationFrequencies(p2, mutss[i]));
+		tab = rbind(tab, temp);
+	}
+	
+	//writing mutation table to file
+	print("pos, id, subpop, tag, group, origin_gen, f_p1, f_p2");
+	tab = matrix(tab, ncol = 7);
+	for (w in 0:(((length(tab))/7)-1)){
+			writeFile(asString(outputFile + "_mutation_DMI_summary.txt"), paste(tab[w,]), T);
+	}
+	
+	print(tab);
+	
+	//Admixed population is P3
+	sim.addSubpop("p3", nPop3); //chnage to 1000 ind
+	p3.setMigrationRates(c(p1, p2), c(prop1, prop2)); // here it will vary according to admixture proportions
+	
+	///////////////////////////////////////
+	// Calculations of the WORST hybrid //
+	/////////////////////////////////////
+	
+	//for the worst ind as F2
+	df = 40; //2% * Ldmi (length possible dmi sites) the 2% from Roux et al 2016
+	pie = 8; // 4*Ne*mu (the within pop polimorphism expected for this pop sizes)(when looking at 2 genomes sampled at random)
+	d = df+pie; //total amount of differences --> this is the "l" = number of incompatibilities in the individual
+	iw = df/4; //homozyg sites based on fixed differences between pops. this is for P1
+	jw= df/4; //same as above, but for P2
+
+	//contribution from fixed differences = d/4;
+	//contribution from polimorphism = pie/2;
+	kw= ((df/4)+(df/4)+(pie/2)+(pie/2)); //total number of heterozygous sites
+	uiw = 0;//according to the Simon et al. formula (depending to values of i and j)
+	ujw = 0;//samae as above
+	
+	piwh = ((2^kw) - uiw - ujw)/((2^d)-2);// probability of heterospecific combinations (pi from Simon et al. formulas).
+	sh = ((d-kw)*d -((iw-jw)^2))/(d*(d-1)*piwh);// hybrid breakdown of the worst F2
+	cat("---------------------------------------------" + "\n");
+	cat("this is worst hyb breakdown: " + sh + "\n");
+	cat("this is pi worst hyb: " + piwh + "\n");
+	cat("---------------------------------------------" + "\n");
+	
+	defineConstant("shem", sh);// define this as a constant to use in the next fitness calculations
+	defineConstant("conspiwh", piwh); // we dont need this for any calculations, but I just saved it anyways
+
+
+}
+
+
+
+_admxplusone_ late(){
+	p3.setMigrationRates(c(p1, p2), c(0.0, 0.0));
+	p1.setSubpopulationSize(0);//kill pops 1 and 2, so we do not have migration from parent pops after the founding event
+	p2.setSubpopulationSize(0);
+}
+
+_admxplusone_: late(){
+	mut_ad = sim.mutationsOfType(m1);
+    mut_ad = sortBy(mut_ad, "position");
+	temp = c();
+	tabm = c();
+	m = 0;
+	count = 0;
+	// here I am just counting the mutations of type BDMI (m1)
+	//however, because the mutation rate is still going, I only count the mutations that were marked before, as group A or B.
+	//new mutations in the system DO NOT account for incompatibilities
+	while (m <= (size(mut_ad)-1)){
+		if ((!isNULL(mut_ad[m].getValue("G")))|(!isNULL(mut_ad[m].getValue("G")))){
+			count = count + 1;
+			m = m+1;} else {m = m+1;}
+	}	
+
+	//these next two loops just build a table with the information about the mutations at EVERY generation.
+	//I used these data later to follow their frequencies through time, and classify them as fixed or polymorphic in the parental populations.
+	m = 0;
+	while (m <= (size(mut_ad)-1)){
+		if ((!isNULL(mut_ad[m].getValue("G")))|(!isNULL(mut_ad[m].getValue("G")))){
+			temp = c(mut_ad[m].position, sim.generation, sim.mutationFrequencies(NULL, mut_ad[m]), mut_ad[m].originGeneration, asString(mut_ad[m].getValue("G")), count);
+			//print(temp);
+			tabm = rbind(tabm, temp);
+			m = m+1;} else {m = m+1;}
+	}
+	
+
+	if(size(tabm) > 5){
+		tabm = matrix(tabm, ncol = 6);
+		for (i in 0:(((length(tabm))/6)-1)){
+			writeFile(asString(outputFile + "_mutation_freqs.txt"), paste(tabm[i,]), T);}
+	}
+
+}
+
+//here I get a very detailed picture of fitness for the first 100 gens
+_admxplusone_: _admxplushund_ early(){
+	ind_fit = p3.cachedFitness(NULL);
+	
+	//if you want, you can get detailed individual fitness (just uncomment next loop)
+	//but that became unnecessary later on, so I just used mean population fitness.
+	// for (i in 0:(length(ind_fit) - 1)){
+	// 	if (i < (length(ind_fit))){
+	// 	writeFile(asString(outputFile +"_dmi_" + sim.generation + "_ind_fitness.txt"), paste(ind_fit[i]), T);}
+	// else {break;}}
+
+	fit = mean(ind_fit);
+	writeFile(asString(outputFile + "_mean_fit.txt"), asString(sim.generation + " " + fit + "\n"), T);	 //"T" is for appending a new line very generation
+}
+
+
+// here you have some standard output files:
+//	SLiM sim output
+//	tree seq file
+//	also have the "clock" function to record the total simulation time
+_final_ late () {
+	sim.outputFull(asString(outputFile + "_sim_" + sim.generation + "_out.txt"));
+	sim.treeSeqOutput(asString(outputFile + "_" + sim.generation + "_dmi.trees"));
+	sim.treeSeqOutput(asString(outputFile + "_" + sim.generation + "_dmi.arvores"));
+	sim.simulationFinished();
+	
+	cat("-------------\n");
+	cat("Time Elapsed until the end of sim: " + (clock() - start)+ "\n\n");
+	cat("-------------\n");
+	cat("finished on generation " + (sim.generation)+ "\n\n");
+	cat("-------------\n");
+}
+
+
+//also get fitness info from 100 gen after admix untill the end
+//but this time, at every 10 gen intervals
+_admxplushund_: early(){
+	if (sim.generation % 10 == 0){
+	   	ind_fit = p3.cachedFitness(NULL);
+		// for (i in 0:(length(ind_fit) - 1)){
+		// 	if (i < (length(ind_fit))){
+		// 	writeFile(asString(outputFile + "_dmi_" + sim.generation + "_ind_fitness.txt"), paste(ind_fit[i]), T);}
+		// else {break;}}
+
+		fit = mean(ind_fit);
+		writeFile(asString(outputFile + "_mean_fit.txt"), asString(sim.generation + " " + fit + "\n"), T);	
+	}	 
+}
+
+//tree seq files every two generations, for the first fifty generations
+// be carefull not to store so many of them, they can occupy a lot of memmory
+_admxplusone_: _admxplusfifty_ late(){
+	if (sim.generation % 2 == 0){
+	sim.treeSeqOutput(asString(outputFile + "_" + sim.generation + "_dmi.trees"));
+	}
+}
+
+//I get the tree seq files every 10 gens for the remainder of the generations
+// generally from xx60 to x300.
+_admxplusfifty_: late(){
+	if (sim.generation % 10 == 0){
+		sim.treeSeqOutput(asString(outputFile + "_" + sim.generation + "_dmi.trees"));
+	}
+}	
+
+///////////////////////////////////////
+// HERE STARTS FITNESS CALCULATIONS //
+/////////////////////////////////////
+
+//this first loop only looks at every BDMI mutation in every individual and identifies it as Het or Homozyg.
+_admxplusone_: fitness(m1) {
+	group = mut.getValue("G"); // First I just want to look at pre-admixture mutations (incompatible ones)
+	if (!isNULL(group)){
+		if (group == "A"){
+			if (homozygous)
+				individual.setValue("HOA", individual.getValue("HOA") + 1);
+			else
+				individual.setValue("HEA", individual.getValue("HEA") + 1);}
+		else if (group == "B"){
+			if (homozygous)
+				individual.setValue("HOB", individual.getValue("HOB") + 1);
+			else
+				individual.setValue("HEB", individual.getValue("HEB") + 1);
+		
+		}// here I just counted how many loci are het (Heb and Hea) or homozyg (Hob, Hoa)
+	}
+	return relFitness;	// no direct fitness effect, just counter-incrementing
+}
+
+
+_admxplusone_: fitness(NULL) {
+	//using the NULL in fitness callback means SLiM will look into every individual (rather than every mutation)
+	
+	hea = individual.getValue("HEA"); //k
+	hoa = individual.getValue("HOA"); //i
+	heb = individual.getValue("HEB"); //k
+	hob = individual.getValue("HOB"); //j	
+	k = heb + hea;
+	l = k+hoa+hob; // l = i+j+k
+	
+	//if individual is fully heterozygous (F1) => i = j = 0 (hob = hoa = 0)
+	// if individual is pure P1 => j = 0 and not het sites for P2 (hob = heb = 0)
+	//if individual is pure P2 => i = 0 and no het sites for P1 (hoa = hea = 0)
+	
+	if (((hoa == 0) & (hob == 0))|
+		((hoa == 0) & (hea == 0))|
+		((hob == 0) & (heb == 0))){
+		temp = c(individual.index, sim.generation, hea, hoa, heb, hob, l, "pi", "sijk", "(sijk/shem)", relFitness);
+		 temp = matrix(temp, ncol = 11);
+		 for (i in 0:(((length(temp))/11)-1)){
+		 	writeFile(asString(outputFile + "_individual_data.txt"), paste(temp[i,]), T);
+		 }
+		return relFitness;// these are the F1s and Parental genotypes: they must have no breakdown, therefore return relFitness of 1.
+	} else {
+		// for the focal individual
+		if (hoa > 0){ui = 0;}
+		else if (hoa == 0){ui = 1;}
+		if (hob > 0){uj = 0;} else if (hob == 0){uj = 1;}
+		pi = ((2^k) - ui - uj)/((2^l) -2); // probs of hetspecific allelic interactions
+		sijk = (((l - k)*l) - ((hoa - hob)^2))/(l*(l-1)*pi); // hybrid breakdown
+		fitness = relFitness - ((sijk/shem));	// calculate fitness effect with scaled breakdown
+		temp = c(individual.index, sim.generation, hea, hoa, heb, hob, l, pi, sijk, (sijk/shem), fitness); // informative table of the genotype and the fitness of every ind
+		temp = matrix(temp, ncol = 11);
+		for (i in 0:(((length(temp))/11)-1)){
+			writeFile(asString(outputFile + "_individual_data.txt"), paste(temp[i,]), T);
+		}
+		
+		return fitness;
+	}
+}

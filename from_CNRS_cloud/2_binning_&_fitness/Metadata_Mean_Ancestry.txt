@@ -1,0 +1,84 @@
+#Meta data for scripts - HYBRID INCOMPATIBILITIES + ANCESTRY
+
+#################
+# MEAN ANCESTRY #
+#################
+
+These are the scripts for binning the data into uniform windows of 500 bp and adding the recombination info
+These scripts must be in the same folder
+Inside this folder, we have subfolders with the ancestry data we obtained from SLiM
+EX:
+~/version_1/ 
+Subfolders: 20000_dmi, 18000_dmi, 16000_dmi... etc
+Create two new folders: "binned" and "recomb" [~/version_1/binned/recomb], before running the  scripts.
+
+########################
+# run the entire chain #
+
+Can simply run parse_data.sh
+Beware that it is probably a good idea to run each batch separatedly (must go into the R scripts and change the batch list/generations) at the same time.
+(it can take a while, these were my first attempts, so they are very inneficient scripts. All you need in the end is a table with the right data [see bellow])
+
+
+##########
+# FITNES #
+##########
+01_mean_fit_per_batch.R
+Will concatenate all fitness data
+into a table like this:
+# "raw_gen" "fitness" "replicate" "batch" "generation"
+# 5001 1 "run_1" 5000 1
+# 5002 1 "run_1" 5000 2
+# 5003 1 "run_1" 5000 3
+# 5004 0.999995 "run_1" 5000 4
+# 5005 0.999992 "run_1" 5000 5
+#   ...
+
+############
+# ANCESTRY #
+############
+At the beginning, I needed to make data uniform because the breaks from the ancestry analysis in pyslim/msprime
+are subject to the stochasticity of recombination events.
+However, as the project advanced, in some analysis this is irrelevant (especially when working with mean values).
+It might be unecessary to bin the data, so it will be ok to skip this step, as long as you maintain the format
+of the table to use as input in the subsequent analysis.
+Also, it is better to write a bash version for all of this, it can take quite sometime to run.
+
+
+02_binning_data.R
+will bin the data into 500 bp windows.
+Produces one file .txt per generation, per divergence time.
+
+# "position" "ancestry" "replicate" "raw_gen" "generation"
+# 250 0.1855 "run_1" 5002 "2"
+# 750 0.1855 "run_1" 5002 "2"
+#     ...
+# 99250 0.1855 "run_50" 5002 "2"
+# 99750 0.1855 "run_50" 5002 "2"
+
+03_recomb_loop.R
+It is best to merge this script with the previous one.
+Because I had to test things many times and fix things as problems appeared,
+instead of fixing and running again, I just wrote another script.
+will add "high" or "low" depending on the position.
+Produces one file .txt per generation, per divergence time.
+# "position" "ancestry" "replicate" "raw_gen" "generation" "recomb"
+# 250 0.269119047619048 "run_1" 5300 300 "high"
+# 750 0.148713235294118 "run_1" 5300 300 "high"
+#   ...
+# 99250 0.393637931034483 "run_50" 5300 300 "low"
+# 99750 0.325 "run_50" 5300 300 "low"
+
+04_ancestry_final.R
+will concatenate everything together, accross ALL divergence times and ALL replicates.
+The final table is this:
+# "replicate" "mean_anc" "raw_gen" "recomb" "generation" "batch"
+# "run_1" 0.1855 5002 "low" 2 5000
+# "run_1" 0.1855 5002 "high" 2 5000
+# "run_2" 0.19 5002 "low" 2 5000
+# "run_2" 0.19 5002 "high" 2 500
+#   ...
+# "run_49" 0 20300 "low" 300 20000
+# "run_49" 0 20300 "high" 300 20000
+# "run_50" 0.290859207799438 20300 "low" 300 20000
+# "run_50" 0.24582551 20300 "high" 300 20000

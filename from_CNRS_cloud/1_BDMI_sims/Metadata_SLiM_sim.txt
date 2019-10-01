@@ -1,0 +1,90 @@
+﻿#Meta data for scripts - HYBRID INCOMPATIBILITIES + ANCESTRY
+
+#######################################
+# IMPLEMENTATION OF THE MODEL in SLiM #
+#######################################
+
+Here we have 4 files that must be copied and pasted together, **always**, for things to work.
+* roda_dmi.sh  (= portuguese for "run_dmi.sh")
+* launch_sim_avdqnf.py 
+* dmi_avdqnf.slim
+* ancestry_avdqnf.py
+
+(avdqnf = a volta dos que não foram = The return of those who never went) -> Got stuck with that name and became too lazy to change it ¯\_(ツ)_/¯
+
+##########################################
+# deploy all scripts in the porper order #
+
+roda_dmi.sh
+
+It will call the other 3 scripts in the right order.
+1/ SLiM simulation
+2/ Ancestry analysis in pyslim/msprime
+3/ Delete Tree files (too heavy) after use
+
+maybe has to correct the file (from \r to \n, because it was written on Windows)
+~: sed -i "s/\r/\n/g" roda_dmi.sh
+~: chmod 777 roda_dmi.sh
+(should be good to go)
+
+In this script you should change important variables for the simulations (without worring about changing the other 3 scripts).
+
+* tadx = time of admixture
+It is the divergence time (also the "batches" used subsequently, to separate between different allopatry times).
+
+* p1, p2, p3 = population sizes
+
+* prop1, prop2 = proportion of admixture of pop1 and pop2 to form p3
+
+* mut = mutation rate (put in decimals/as float, not scientific notation)
+
+* len = size of the genome (put as integer)
+
+* taxfifty; taxhund = time after admixture plus 50 or 100 generations (will help stablish the intervals from which tree sequence files are saved) 
+
+* dmi= number of sites that can be mutated into incompatibility loci
+
+* load = number of sites that can be mutated into sligthly deleterious muts (hybrid load model)
+
+* f = end generation
+
+* s1 and s2 = pay attention to these numbers (they are in the slim script, so if you change here, must change on slim script as well)
+they define the sampling step: in which generations the tree-seq files are written
+
+###############
+# Launch SLiM #
+launch_sim_avdqnf.py
+Python script that launches SLiM with some variables added to it.
+It was a script used at the beginning, could be extended to hold all variables (instead of putting in the .sh script above), or dropped all together (and use sed command to substitute text in .slim file).
+
+
+###############
+# SLiM script #
+dmi_avdqnf.slim is the script with the model. 
+It has a lot of annotations in it, so I will not go into detail in here.
+I recommend openning the script in a code editor and setting the language to "C#" to see things properly color coded.
+There are many outpuf files from the simulations, here is the list:
+* run_xx_mean_fit.txt = mean population fitness per generation
+* run_xx_mutation_DMI_summary.txt = summary of the BDMI loci accumulated just before admixture.
+* run_xx_sim_[last gen]_out.txt = standard slim output
+* run_xx_sim_log.txt = log of the run: time it took, place of genomic elements (putative BDMI sites) and the BDMI sites (frequencies, population, position, unique ID...)
+* run_xx_[generation]_dmi.arvores = tre-seq file at a given generation.
+
+* run_xx_mutation_freqs.txt = records every BDMI mutation history throughout the admixture phase. 
+Note that it actually starts just **prior** admixture (gen 1 after adx).
+SLiM thinks there are 1500 individuals at that time (500 from P1, 500 from P2 and 1000 from P3), 
+thus allele frequencies of fixed alleles are different than admixture proportions, 
+because they are calculated from 1500 indviduals, and not 1000.
+Generation 2 has F1's and parental genotypes only. 
+
+
+#########################
+# Ancestry proporptions #
+ancestry_avdqnf.py
+Load the tree-seq files into python (pyslim + msprime) and determines ancestry propoprtions.
+They use the same sampling intervals (generations in which tre-seq files were written) mentioned before.
+The intervals are set in the roda_dmi.sh, so should run fine if you change it there (and in the .slim file)
+will produce the following files:
+* ancestry_zz.txt (where zz is the generation number) = ancestry proporption data
+* breaks_zz.txt  = correspondent intervals/breaks of each ancestry "chunk"
+(one pair of 'ancestry + breaks' file for every sampling step is produced).

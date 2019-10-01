@@ -1,0 +1,51 @@
+#Meta data for scripts - HYBRID INCOMPATIBILITIES + ANCESTRY
+
+###############################
+# ANALYSIS SELECTED MUTATIONS #
+###############################
+
+These scripts are for analysis of the genome windows and selected mutations
+At the top of the scripts there are "common" variables
+(divergence time, working directory, which type of outcome is being analysed)
+
+
+#Alleles and Ancestry
+- 1a_fate_alleles.R
+  * This classifyies mutations into "fixed" and "polymorphic" states
+  * This is done based on the initial admixture proportions.
+
+- 1b_ancestry.R
+  * This is for binning the ancestry into the right window size
+
+#Replicates outcome & graphing allele frequencies
+- 2a_replicates_outcome.r
+  * Gets which replicates lost/kept the minor ancestry
+
+-2b_graph_fate_alleles.r
+  * allele frequency graphs
+
+#Separating Derived Alleles
+- 3_classify_mutations.r
+  * Gets only the derived mutations to do the Delta calculations
+
+#Delta calculations
+- 4_get_delta_final.r
+  *Calculates the delta within 1cM windows
+
+#Binning delta`
+- 5_intervals_delta.r
+  * summary stats for Delta
+  * dividing it into 5 categories
+
+#Graphing delta
+- 6_graph_delta.r
+  * Graphing delta by recombination replicates
+
+#Summary Delta
+- 7_summary_delta.R
+
+#Comparing plots
+- 8_compare_plots.r
+  * comparison between runs with different outcomes
+
+
