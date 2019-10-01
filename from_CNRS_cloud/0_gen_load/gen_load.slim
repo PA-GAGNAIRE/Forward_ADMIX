@@ -1,0 +1,140 @@
+initialize() {
+	defineConstant("start", clock());
+	defineConstant("L", Lchro);
+    defineConstant("run", outputFile);
+	initializeTreeSeq();
+	initializeMutationRate(1e-6);
+	initializeMutationType("m1", 0.0, "f", -25e-4);
+	m1.convertToSubstitution = F;
+	m1.color = "red";
+	even = NULL;
+	odd = NULL;
+	
+	for (i in 0:(L-1)){
+		if(i % 2 == 0){
+			even = c(even, i);
+		} else {odd = c(odd, i);}
+	}
+	
+	defineConstant("ev", even);
+	defineConstant("od", odd);
+	defineConstant("func", sort(sample(od, func_el)));
+	initializeGenomicElementType("g1", c(m1), c(1.0));
+	
+	for (i in 0:(length(func)-1)){
+		initializeGenomicElement(g1, func[i], func[i]);
+	}
+	
+	initializeRecombinationRate(c(1e-3, 1e-4), c(asInteger(L/2), asInteger(L-1)));
+}
+
+1 late() {
+    //this makes the ancestry script run much faster later on
+	sim.addSubpop("p1", 1);
+	sim.addSubpop("p2", 1);
+	sim.treeSeqRememberIndividuals(sim.subpopulations.individuals);
+}
+
+2 early(){
+	p1.setSubpopulationSize(nPop1);
+	p2.setSubpopulationSize(nPop2);
+}
+
+
+//_time_ is the generation right **before** admixture
+// from generation 3 to adx, they will acumulate slightly deleterious mutations
+// so during this phase, we keep track of the mean pop fitness
+3:_time_ early(){
+    ind_fit_1 = p1.cachedFitness(NULL);
+	ind_fit_2 = p2.cachedFitness(NULL);
+    
+    fit1 = mean(ind_fit_1);
+    fit2 = mean(ind_fit_2);
+    writeFile(asString("P1" + "_mean_fit.txt"), asString(sim.generation + " " + fit1 + "\n"), T);	 
+    writeFile(asString("P2" + "_mean_fit.txt"), asString(sim.generation + " " + fit2 + "\n"), T);
+}	
+
+// setting up admixture proportions
+_time_ late() {
+    sim.addSubpop("p3", nPop3);
+	p3.setMigrationRates(c(p1, p2), c(_prop1_, _prop2_));
+}
+
+//time +1
+// fitness calculations ofr admixed pop
+_time1_ early(){
+	ind_fit = p3.cachedFitness(NULL);
+    fit = mean(ind_fit);
+    writeFile(asString("P3" + "_mean_fit.txt"), asString(sim.generation + " " + fit + "\n"), T);
+}	
+
+//P1 and P2 cease to exist and they no longer contribute to P3
+_time1_ late() {
+	p3.setMigrationRates(c(p1, p2), c(0.0, 0.0));
+	p1.setSubpopulationSize(0);
+	p2.setSubpopulationSize(0);
+	
+}
+
+
+//fitness calculations at every generation, until end of simulation
+_time1_: early(){
+    ind_fit = p3.cachedFitness(NULL);
+    fit = mean(ind_fit);
+    writeFile(asString("P3" + "_mean_fit.txt"), asString(sim.generation + " " + fit + "\n"), T);
+}	
+
+//collecting data on TreeSequence files to calculate ancestry proportions later on
+//sampling interval of 5 generations in the first 50 generations *after* admixture
+_time1_: _admxplusfifty_ late() {
+    if (sim.generation % 5 == 0){    
+        sim.treeSeqOutput(asString(outputFile + "_" + sim.generation + ".trees"));
+	    time = asString("Time Elapsed: " + (clock() - start)+ "\n\n");
+	    space = "-------------\n";
+        gen_pass = asString("generation " + (sim.generation) + "\n\n");
+        writeFile(asString(outputFile + "_time.txt"), paste(c(time, space, gen_pass)), T);
+    }
+
+}
+
+//after that, data is colected every 10 generations
+_admxplusfifty_: late(){
+    if (sim.generation % 10 == 0){ 
+        sim.treeSeqOutput(asString(outputFile + "_" + sim.generation + ".trees"));
+	    sim.outputFull(asString(outputFile + "_sim_" + sim.generation + ".txt"));
+	    time = asString("Time Elapsed: " + (clock() - start)+ "\n\n");
+	    space = "-------------\n";
+        gen_pass = asString("generation " + (sim.generation) + "\n\n");
+        writeFile(asString(outputFile + "_time.txt"), paste(c(time, space, gen_pass)), T);
+    }
+}
+
+// before the end of the simulation, we save some important information on the mutations accumulated
+_finish_ late() {
+	v = sim.mutationFrequencies(p3);
+    v1 = matrix(asFloat(v), nrow = length(sim.mutationCounts(NULL)));
+    u = sim.mutations.position;
+    u1 = matrix(asFloat(u), nrow = length(sim.mutationCounts(NULL)));
+	q = cbind(u1, v1); // matrix with mutation position and frequeny in P3
+	gen = sim.generation;
+    
+	// write mutation matrix to file
+    for (i in 0:(length(q)/2)){
+		if (i < (length(q)/2)){
+			writeFile(asString("mutp3_"+ gen + "_"+ run), paste(q[i,]), T);}
+		else {break;}
+	}
+    sim.treeSeqOutput(asString(outputFile + "_" + sim.generation + ".trees"));
+	sim.outputFull(asString(outputFile + "_sim_" + sim.generation + ".txt"));
+	time = asString("Time Elapsed: " + (clock() - start)+ "\n\n");
+	space = "-------------\n";
+    gen_pass = asString("generation " + (sim.generation) + "\n\n");
+    writeFile(asString(outputFile + "_time.txt"), paste(c(time, space, gen_pass)), T);
+	
+	sim.simulationFinished();
+	cat("Time Elapsed until the end of sim: " + (clock() - start)+ ":\n\n");
+	cat("-------------\n");
+	cat("finished on generation " + (sim.generation)+ ":\n\n");
+
+
+}
