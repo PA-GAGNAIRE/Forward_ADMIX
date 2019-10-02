@@ -2,9 +2,10 @@
 
 Two different polygenic models were built and tested: (1) **hybrid genetic load** and (2) **hybrid incompatibility**
 
-## 1) (hybrid) Genetic load
+## 1) Genetic load
 
-dcd;'md'c
+somethingsomething
 
 ## 2) Hybrid incompatibilities
-;lCDC;MC,'
+
+somethingsomething
