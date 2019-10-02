@@ -1,3 +1,10 @@
 # Project Forward Admix
 
-Two different polygenic models were tested: **hybrid genetic load** and **hybrid incompatibility**
+Two different polygenic models were built and tested: (1) **hybrid genetic load** and (2) **hybrid incompatibility**
+
+## 1) (hybrid) Genetic load
+
+dcd;'md'c
+
+## 2) Hybrid incompatibilities
+;lCDC;MC,'
